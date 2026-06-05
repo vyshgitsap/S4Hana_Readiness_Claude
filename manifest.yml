@@ -1,0 +1,10 @@
+applications:
+  - name: s4-migration-monitor
+    memory: 256M
+    instances: 1
+    buildpacks:
+      - python_buildpack
+    command: python app.py
+    env:
+      ANTHROPIC_API_KEY: your_key_here
+      DEMO_MODE: true

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S/4HANA Migration Readiness Tracker</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Calibri,sans-serif; background:#f0f2f5; color:#1a1a2e; font-size:13px; }
+    .header { background:#1a3a5c; color:white; padding:14px 24px; display:flex; justify-content:space-between; align-items:flex-start; }
+    .header h1 { font-size:1rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; }
+    .header .sub { font-size:0.75rem; color:#a8c8e8; margin-top:4px; }
+    .header-right { text-align:right; font-size:0.75rem; color:#a8c8e8; line-height:1.7; }
+    .header-right strong { color:white; }
+    .toolbar { background:white; border-bottom:2px solid #1a3a5c; padding:8px 24px; display:flex; align-items:center; gap:12px; }
+    .btn-run { background:#1a3a5c; color:white; border:none; padding:6px 18px; border-radius:3px; font-size:0.8rem; cursor:pointer; font-weight:600; font-family:inherit; }
+    .btn-run:hover { background:#2a5a8c; }
+    .btn-run:disabled { background:#999; cursor:not-allowed; }
+    .demo-tag { background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:2px 10px; border-radius:3px; font-size:0.72rem; font-weight:600; display:none; }
+    .last-run { font-size:0.72rem; color:#666; margin-left:auto; }
+    .summary-bar { display:flex; margin:14px 24px; border:1px solid #ddd; border-radius:4px; overflow:hidden; background:white; }
+    .sum-cell { flex:1; padding:10px 14px; border-right:1px solid #eee; text-align:center; }
+    .sum-cell:last-child { border-right:none; }
+    .sum-val { font-size:1.5rem; font-weight:700; line-height:1; }
+    .sum-lbl { font-size:0.68rem; color:#666; margin-top:3px; text-transform:uppercase; letter-spacing:0.5px; }
+    .v-blue { color:#1a3a5c; } .v-red { color:#c0392b; } .v-amber { color:#c07000; } .v-green { color:#27ae60; }
+    .status-pill { display:inline-block; padding:3px 12px; border-radius:3px; font-size:0.78rem; font-weight:700; }
+    .pill-red   { background:#fde8e8; color:#c0392b; border:1px solid #c0392b; }
+    .pill-amber { background:#fef3e2; color:#c07000; border:1px solid #e6a020; }
+    .pill-green { background:#e8f8ee; color:#27ae60; border:1px solid #27ae60; }
+    .sysbar { background:#eaf0f8; border:1px solid #c8d8e8; border-radius:4px; margin:0 24px 14px 24px; padding:7px 16px; display:flex; gap:28px; flex-wrap:wrap; }
+    .sysbar-item { font-size:0.75rem; color:#444; }
+    .sysbar-item b { color:#1a3a5c; }
+    .ai-box { background:white; border:1px solid #ddd; border-left:4px solid #1a3a5c; border-radius:4px; margin:0 24px 14px 24px; padding:12px 16px; }
+    .ai-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:1px; color:#1a3a5c; font-weight:700; margin-bottom:6px; }
+    .ai-text { font-size:0.8rem; color:#333; line-height:1.6; }
+    .blocker-box { background:#fdf0f0; border:1px solid #e8a0a0; border-left:4px solid #c0392b; border-radius:4px; margin:0 24px 14px 24px; padding:12px 16px; }
+    .blocker-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:1px; color:#c0392b; font-weight:700; margin-bottom:6px; }
+    .blocker-text { font-size:0.82rem; color:#333; line-height:1.6; font-weight:500; }
+    .blocker-meta { font-size:0.72rem; color:#c0392b; margin-top:6px; font-style:italic; }
+    .table-wrap { margin:0 24px 24px 24px; background:white; border:1px solid #ddd; border-radius:4px; overflow:hidden; }
+    .table-title { background:#1a3a5c; color:white; padding:7px 16px; font-size:0.78rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; }
+    .table-title span:last-child { font-weight:400; font-size:0.72rem; color:#a8c8e8; }
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background:#f5f7fa; border-bottom:2px solid #ddd; }
+    thead th { padding:7px 10px; text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:#555; font-weight:700; white-space:nowrap; border-right:0.5px solid #eee; }
+    thead th:last-child { border-right:none; }
+    tbody tr { border-bottom:1px solid #eee; }
+    tbody tr:hover { background:#f8f9ff; }
+    tbody tr:last-child { border-bottom:none; }
+    td { padding:7px 10px; font-size:0.78rem; vertical-align:top; border-right:0.5px solid #f0f0f0; color:#333; }
+    td:last-child { border-right:none; }
+    td.sno { color:#999; font-family:monospace; font-size:0.72rem; text-align:center; white-space:nowrap; }
+    td.item { font-weight:500; color:#1a1a2e; min-width:180px; }
+    td.action { color:#444; font-size:0.75rem; min-width:220px; }
+    td.owner { white-space:nowrap; color:#444; }
+    td.due { white-space:nowrap; font-family:monospace; font-size:0.72rem; color:#555; }
+    td.sapnote { white-space:nowrap; }
+    .pri { display:inline-block; padding:1px 8px; border-radius:2px; font-size:0.68rem; font-weight:700; white-space:nowrap; }
+    .pri-critical { background:#fde8e8; color:#c0392b; border:1px solid #e8a0a0; }
+    .pri-high     { background:#fef3e2; color:#c07000; border:1px solid #f0c060; }
+    .pri-medium   { background:#fff8e1; color:#8a6200; border:1px solid #ffe082; }
+    .pri-low      { background:#f5f5f5; color:#666;    border:1px solid #ddd; }
+    .rag { display:inline-block; padding:1px 8px; border-radius:2px; font-size:0.68rem; font-weight:700; white-space:nowrap; }
+    .rag-open { background:#fde8e8; color:#c0392b; border:1px solid #e8a0a0; }
+    .rag-wip  { background:#fef3e2; color:#c07000; border:1px solid #f0c060; }
+    .rag-done { background:#e8f8ee; color:#27ae60; border:1px solid #90d8a8; }
+    .note-link { font-size:0.7rem; color:#1a3a5c; text-decoration:none; border-bottom:1px dotted #1a3a5c; }
+    .note-link:hover { color:#2a5a8c; }
+    .loading-row td { text-align:center; padding:40px; color:#999; font-style:italic; }
+    .spinner { display:inline-block; width:13px; height:13px; border:2px solid #ccc; border-top-color:#1a3a5c; border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:6px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .footer { text-align:center; font-size:0.7rem; color:#aaa; padding:14px; border-top:1px solid #e0e0e0; }
+    @media print { .toolbar { display:none; } body { background:white; } .table-wrap { margin:0; } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>S/4HANA Migration Readiness Tracker</h1>
+    <div class="sub" id="sysLine">Initialising &#8212; click Run Readiness Checks to begin</div>
+  </div>
+  <div class="header-right" id="headerRight">&nbsp;</div>
+</div>
+
+<div class="toolbar">
+  <button class="btn-run" id="btnRun" onclick="runChecks()">&#9654; Run Readiness Checks</button>
+  <span class="demo-tag" id="demoTag">&#9888; DEMO DATA &#8212; Connect SAP system for live results</span>
+  <span class="last-run" id="lastRun"></span>
+</div>
+
+<div class="summary-bar" id="summaryBar" style="display:none">
+  <div class="sum-cell"><div class="sum-val v-blue" id="sumScore">--</div><div class="sum-lbl">Readiness Score</div></div>
+  <div class="sum-cell"><div style="padding-top:5px" id="sumStatus"></div><div class="sum-lbl">Overall Status</div></div>
+  <div class="sum-cell"><div class="sum-val v-red"   id="sumCritical">0</div><div class="sum-lbl">Critical Items</div></div>
+  <div class="sum-cell"><div class="sum-val v-amber" id="sumHigh">0</div><div class="sum-lbl">High Priority</div></div>
+  <div class="sum-cell"><div class="sum-val v-green" id="sumDone">0</div><div class="sum-lbl">Completed</div></div>
+</div>
+
+<div class="sysbar" id="sysBar" style="display:none">
+  <div class="sysbar-item">SID: <b id="si_sid">--</b></div>
+  <div class="sysbar-item">Client: <b id="si_client">--</b></div>
+  <div class="sysbar-item">Release: <b id="si_release">--</b></div>
+  <div class="sysbar-item">Database: <b id="si_db">--</b></div>
+  <div class="sysbar-item">Landscape: <b id="si_landscape">--</b></div>
+  <div class="sysbar-item">Host: <b id="si_host">--</b></div>
+</div>
+
+<div class="ai-box" id="aiBox" style="display:none">
+  <div class="ai-label">AI Analysis &#8212; Generated by Claude</div>
+  <div class="ai-text" id="aiText"></div>
+</div>
+
+<div class="blocker-box" id="blockerBox" style="display:none">
+  <div class="blocker-label">Migration Blockers &#8212; Immediate Action Required</div>
+  <div class="blocker-text" id="blockerText"></div>
+  <div class="blocker-meta" id="blockerMeta"></div>
+</div>
+
+<div class="table-wrap">
+  <div class="table-title">
+    <span>Readiness Check Items</span>
+    <span id="tableCount"></span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px;text-align:center">S.No</th>
+        <th>Check Item</th>
+        <th style="width:90px">Priority</th>
+        <th style="width:110px">Status</th>
+        <th style="width:110px">Owner</th>
+        <th style="width:90px">Due Date</th>
+        <th style="width:80px">SAP Note</th>
+        <th>Action Required</th>
+      </tr>
+    </thead>
+    <tbody id="trackerBody">
+      <tr class="loading-row"><td colspan="8">Click "Run Readiness Checks" to generate the tracker</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">S/4HANA Migration Readiness Tracker &nbsp;&middot;&nbsp; Powered by Claude AI &nbsp;&middot;&nbsp; SAP Basis Automation</div>
+
+<script>
+var SKIP_PREFIXES = [
+  "System ID:", "Total RFC", "Active:", "Currently running",
+  "Top 3 largest", "Top 5", "Database:"
+];
+
+var AREA_META = {
+  "System Landscape":    { owner:"Basis Team",      days:14 },
+  "Database and Storage":{ owner:"Basis + DBA",     days:21 },
+  "Open Items":          { owner:"Functional Team", days:7  },
+  "Custom Code":         { owner:"ABAP Team",       days:21 },
+  "Transport System":    { owner:"Basis Team",      days:10 },
+  "Users and Security":  { owner:"Security Team",   days:10 },
+  "Background Jobs":     { owner:"Basis + Func",    days:14 },
+  "Interfaces and RFC":  { owner:"Interface Team",  days:14 }
+};
+
+function calcDueDate(daysFromNow, isDone) {
+  if (isDone) {
+    return new Date().toLocaleDateString('en-GB',{
+      day:'2-digit', month:'2-digit', year:'numeric'
+    }).replace(/\//g,'.') + ' \u2705';
+  }
+  var migTarget = new Date('2026-07-20');
+  var today     = new Date();
+  var daysLeft  = Math.ceil((migTarget - today) / 86400000);
+  var days      = Math.min(daysFromNow, daysLeft - 7);
+  var d         = new Date();
+  d.setDate(d.getDate() + Math.max(days, 1));
+  return d.toLocaleDateString('en-GB',{
+    day:'2-digit', month:'2-digit', year:'numeric'
+  }).replace(/\//g,'.');
+}
+
+function cleanText(raw) {
+  return raw
+    .replace(/^CRITICAL:\s*/i, '')
+    .replace(/^WARNING:\s*/i, '')
+    .replace(/^Action required:\s*/i, '')
+    .replace(/^Action:\s*/i, '')
+    .replace(/SAP Note \d+[:\s].*/gi, '')
+    .replace(/\u2705/g, '')
+    .replace(/\u26a0/g, '')
+    .replace(/\ufe0f/g, '')
+    .trim();
+}
+
+function getPriority(finding) {
+  var f = finding.toLowerCase();
+  if (
+    finding.indexOf('CRITICAL') !== -1 ||
+    f.indexOf('will cause') !== -1 ||
+    f.indexOf('will crash') !== -1 ||
+    f.indexOf('hard blocker') !== -1 ||
+    f.indexOf('immediately') !== -1
+  ) return { p:'Critical', pc:'pri-critical', s:'Open',        rc:'rag-open', d:7 };
+
+  if (
+    finding.indexOf('\u2705') !== -1 ||
+    f.indexOf('confirmed') !== -1 ||
+    f.indexOf('meets minimum') !== -1 ||
+    f.indexOf('no jobs in active') !== -1 ||
+    f.indexOf('within normal range') !== -1 ||
+    f.indexOf('no errors') !== -1 ||
+    f.indexOf('correctly configured') !== -1 ||
+    f.indexOf('all active') !== -1 ||
+    f.indexOf('all responding') !== -1 ||
+    f.indexOf('accessible \u2705') !== -1
+  ) return { p:'Low',      pc:'pri-low',      s:'Done',         rc:'rag-done', d:0 };
+
+  if (
+    finding.indexOf('WARNING') !== -1 ||
+    finding.indexOf('\u26a0') !== -1 ||
+    f.indexOf('required') !== -1 ||
+    f.indexOf('recommend') !== -1 ||
+    f.indexOf('must be') !== -1
+  ) return { p:'High',     pc:'pri-high',     s:'In Progress',  rc:'rag-wip',  d:14 };
+
+  return   { p:'Medium',   pc:'pri-medium',   s:'In Progress',  rc:'rag-wip',  d:14 };
+}
+
+function buildRows(categories, findingActions) {
+  var rows = [];
+
+  categories.forEach(function(cat, catIndex) {
+    var m = AREA_META[cat.category] || { owner:'TBD', days:14 };
+
+    cat.findings.forEach(function(finding, findingIdx) {
+
+      // Clean text first
+      var checkItem = cleanText(finding);
+
+      // Skip checks
+      var skip = false;
+      for (var s = 0; s < SKIP_PREFIXES.length; s++) {
+        if (finding.indexOf(SKIP_PREFIXES[s]) === 0) { skip = true; break; }
+      }
+      if (skip) return;
+      if (finding.trim().length < 15) return;
+      if (!checkItem || checkItem.trim().length < 5) return;
+
+      // Priority / status
+      var pr = getPriority(finding);
+      if (pr.p === 'High' || pr.p === 'Medium') pr.d = m.days;
+
+      // SAP Note
+      var noteMatch = finding.match(/SAP Note (\d+)/i);
+      var sapNote   = noteMatch ? noteMatch[1] : '';
+
+      // Action — look up by catIndex|findingIdx (set in app.py)
+      var actionKey = catIndex + '|' + findingIdx;
+      var action    = findingActions[actionKey] || '';
+
+      // Fallbacks
+      if (!action) {
+        if (pr.s === 'Done') {
+          action = 'Completed \u2014 no further action required';
+        } else if (pr.p === 'Critical') {
+          action = 'Immediate resolution required before SUM can start \u2014 assign owner today';
+        } else {
+          action = 'Review and resolve before migration cutover date';
+        }
+      } else if (pr.s === 'Done') {
+        action = 'Completed \u2014 no further action required';
+      }
+
+      rows.push({
+        checkItem : checkItem,
+        priority  : pr.p,
+        priClass  : pr.pc,
+        status    : pr.s,
+        ragClass  : pr.rc,
+        owner     : m.owner,
+        due       : calcDueDate(pr.d, pr.s === 'Done'),
+        note      : sapNote,
+        action    : action
+      });
+    });
+  });
+
+  return rows;
+}
+
+function runChecks() {
+  var btn  = document.getElementById('btnRun');
+  var body = document.getElementById('trackerBody');
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span> Running checks...';
+  body.innerHTML = '<tr class="loading-row"><td colspan="8"><span class="spinner"></span> Running all 8 readiness checks and generating AI analysis...</td></tr>';
+
+  fetch('/report')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+
+      if (data.error) throw new Error(data.error);
+
+      var si = data.system_info || {};
+
+      // Header
+      document.getElementById('sysLine').textContent =
+        'System: ' + (si.sid||'--') + ' | Client: ' + (si.client||'--') +
+        ' | ' + (si.release||'--') + ' | DB: ' + (si.db||'--');
+      document.getElementById('headerRight').innerHTML =
+        'Target Go-Live: <strong>20.07.2026</strong><br>' +
+        'Week 6 of 14 &nbsp;|&nbsp; Last run: ' + data.generated_at;
+
+      // Sysbar
+      document.getElementById('si_sid').textContent       = si.sid       || '--';
+      document.getElementById('si_client').textContent    = si.client    || '--';
+      document.getElementById('si_release').textContent   = si.release   || '--';
+      document.getElementById('si_db').textContent        = si.db        || '--';
+      document.getElementById('si_landscape').textContent = si.landscape || '--';
+      document.getElementById('si_host').textContent      = si.host      || '--';
+      document.getElementById('sysBar').style.display     = 'flex';
+
+      // Demo tag
+      if (data.demo_mode) {
+        document.getElementById('demoTag').style.display = 'inline';
+      }
+
+      // Build rows using finding_actions from app.py
+      var findingActions = data.finding_actions || {};
+      var rows           = buildRows(data.categories, findingActions);
+
+      var critCount = rows.filter(function(r){ return r.priority === 'Critical'; }).length;
+      var highCount = rows.filter(function(r){ return r.priority === 'High'; }).length;
+      var doneCount = rows.filter(function(r){ return r.status   === 'Done'; }).length;
+
+      // Summary bar
+      document.getElementById('sumScore').textContent    = data.overall_score + '/100';
+      document.getElementById('sumCritical').textContent = critCount;
+      document.getElementById('sumHigh').textContent     = highCount;
+      document.getElementById('sumDone').textContent     = doneCount;
+
+      var pillClass = data.overall_status === 'CRITICAL' ? 'pill-red' :
+                      data.overall_status === 'WARNING'  ? 'pill-amber' : 'pill-green';
+      var pillLabel = data.overall_status === 'CRITICAL' ? 'NOT READY' :
+                      data.overall_status === 'WARNING'  ? 'IN PROGRESS' : 'READY';
+      document.getElementById('sumStatus').innerHTML =
+        '<span class="status-pill ' + pillClass + '">' + pillLabel + '</span>';
+      document.getElementById('summaryBar').style.display = 'flex';
+
+      document.getElementById('tableCount').textContent =
+        rows.length + ' items \u2014 ' + critCount + ' critical | ' +
+        highCount + ' high | ' + doneCount + ' done';
+
+      // AI narrative — extract executive summary
+      var narrative = data.narrative || '';
+      var execText  = '';
+      var execMatch = narrative.match(
+        /(?:##\s*2\.\s*)?EXECUTIVE SUMMARY[:\s]*([\s\S]*?)(?=##\s*3|TOP 3|CATEGORY BREAKDOWN|ESTIMATED|$)/i
+      );
+      if (execMatch && execMatch[1]) {
+        execText = execMatch[1]
+          .replace(/\*\*/g, '').replace(/#{1,3}\s*/g, '').trim();
+      } else {
+        execText = narrative
+          .replace(/##.*\n/g, '').replace(/\*\*/g, '')
+          .split('\n').filter(function(l){ return l.trim(); })
+          .slice(0, 5).join(' ');
+      }
+      document.getElementById('aiText').textContent  = execText;
+      document.getElementById('aiBox').style.display = 'block';
+
+      // Blocker summary
+      var blockerText = (data.blocker_summary || '')
+        .replace(/#{1,3}\s*/g, '')
+        .replace(/\*\*/g, '')
+        .replace(/---/g, '')
+        .replace(/S\/4HANA MIGRATION READINESS[^.]*\./i, '')
+        .trim();
+      if (blockerText) {
+        document.getElementById('blockerText').textContent = blockerText;
+        document.getElementById('blockerMeta').textContent =
+          critCount + ' critical blockers \u00b7 Migration target: 20.07.2026 \u00b7 Generated: ' + data.generated_at;
+        document.getElementById('blockerBox').style.display = 'block';
+      }
+
+      // Render table
+      body.innerHTML = rows.map(function(row, i) {
+        return '<tr>' +
+          '<td class="sno">' + (i + 1) + '</td>' +
+          '<td class="item">' + row.checkItem + '</td>' +
+          '<td><span class="pri ' + row.priClass + '">' + row.priority + '</span></td>' +
+          '<td><span class="rag ' + row.ragClass + '">' + row.status + '</span></td>' +
+          '<td class="owner">' + row.owner + '</td>' +
+          '<td class="due">' + row.due + '</td>' +
+          '<td class="sapnote">' +
+            (row.note
+              ? '<a class="note-link" href="https://launchpad.support.sap.com/#/notes/' +
+                row.note + '" target="_blank">' + row.note + '</a>'
+              : '<span style="color:#ccc">\u2014</span>') +
+          '</td>' +
+          '<td class="action">' + row.action + '</td>' +
+        '</tr>';
+      }).join('');
+
+      document.getElementById('lastRun').textContent = 'Last run: ' + data.generated_at;
+    })
+    .catch(function(err) {
+      body.innerHTML =
+        '<tr class="loading-row"><td colspan="8">Error: ' + err.message + '</td></tr>';
+    })
+    .finally(function() {
+      btn.disabled  = false;
+      btn.innerHTML = '&#9654; Run Readiness Checks';
+    });
+}
+</script>
+</body>
+</html>
