@@ -1,10 +1,67 @@
 # checks/category3.py
 # Category 3 — Open Items and Consistency Checks
 
+import requests
+import urllib3
+import os
+urllib3.disable_warnings()
+
+
+def get_odata_open_items(host, user, password):
+    """Fetch open items and ST22 dumps via OData"""
+    base_url = f"https://{host}:44300"
+    auth = (user, password)
+    headers = {"Accept": "application/json"}
+
+    results = {
+        "open_updates": 0,
+        "spool_count": 0,
+        "bdc_errors": 0,
+        "dumps_24hr": 0,
+        "dump_details": []
+    }
+
+    try:
+        # ST22 Dumps via OData
+        r = requests.get(
+            f"{base_url}/sap/opu/odata/sap/DUMP_ANALYSIS_SRV/DumpHeaders"
+            f"?$inlinecount=allpages&$top=10"
+            f"&$orderby=Date desc",
+            auth=auth, verify=False, headers=headers
+        )
+        if r.status_code == 200:
+            data = r.json()
+            results["dumps_24hr"] = int(
+                data.get("d", {}).get("__count", 0)
+            )
+            entries = data.get("d", {}).get("results", [])
+            for entry in entries[:5]:
+                results["dump_details"].append({
+                    "error": entry.get("ExcpName", "Unknown"),
+                    "program": entry.get("ProgName", "Unknown"),
+                    "date": entry.get("Date", "Unknown")
+                })
+
+    except Exception as e:
+        print(f"OData open items error: {e}")
+
+    return results
+
+
 def run_check(rfc_conn=None):
 
     # ── Demo Mode ──────────────────────────────────────────
     if rfc_conn is None:
+
+        # Try OData Live connection first
+        host = os.getenv("S4H_HOST")
+        user = os.getenv("S4H_USER")
+        password = os.getenv("S4H_PASSWORD")
+
+        if host and host != "PLACEHOLDER":
+            return run_odata_check(host, user, password)
+
+        # Fall back to demo data
         return {
             "category": "Open Items",
             "status": "WARNING",
@@ -23,6 +80,8 @@ def run_check(rfc_conn=None):
                 ["TemSe objects: Within normal range ✅", ""],
                 ["Batch input sessions with errors: 0 ✅", ""],
                 ["Incomplete LUWs: 0 ✅", ""],
+                ["ST22 Dumps last 24hrs: 3 — RABAX_STATE, SYSTEM_CORE_DUMPED",
+                 "Run ST22 → analyse dump details → fix root cause program"],
                 ["Open update requests are a hard blocker — must be cleared before SUM starts (SAP Note 2399707)",
                  "Run SM13 → reprocess or delete all open update records with functional team"],
                 ["Estimated cleanup time: 2 days with functional team involvement",
@@ -31,7 +90,7 @@ def run_check(rfc_conn=None):
             "demo": True
         }
 
-    # ── Live Mode ──────────────────────────────────────────
+    # ── Live RFC Mode ──────────────────────────────────────
     try:
         findings = []
         status = "PASS"
@@ -71,7 +130,8 @@ def run_check(rfc_conn=None):
                 status = "WARNING"
             score -= 15
         else:
-            findings.append(f"Spool requests: {spool_count} — within range ✅")
+            findings.append(
+                f"Spool requests: {spool_count} — within range ✅")
 
         # Check batch input sessions
         result = rfc_conn.call(
@@ -92,6 +152,35 @@ def run_check(rfc_conn=None):
         else:
             findings.append("No batch input session errors ✅")
 
+        # ST22 Dumps via RFC
+        result = rfc_conn.call(
+            'RFC_READ_TABLE',
+            QUERY_TABLE='SNAP',
+            FIELDS=[
+                {'FIELDNAME': 'SNAPDATE'},
+                {'FIELDNAME': 'ERRCLASS'}
+            ],
+            OPTIONS=[{'TEXT': "SNAPDATE >= SY-DATUM - 1"}]
+        )
+        dumps = len(result.get('DATA', []))
+        if dumps > 5:
+            findings.append(
+                f"CRITICAL: {dumps} ABAP dumps in last 24hrs — "
+                f"investigate immediately via ST22"
+            )
+            status = "CRITICAL"
+            score -= 30
+        elif dumps > 0:
+            findings.append(
+                f"WARNING: {dumps} ABAP dumps in last 24hrs — "
+                f"review via ST22"
+            )
+            if status != "CRITICAL":
+                status = "WARNING"
+            score -= 15
+        else:
+            findings.append("No ABAP dumps in last 24hrs ✅")
+
         return {
             "category": "Open Items",
             "status": status,
@@ -108,3 +197,85 @@ def run_check(rfc_conn=None):
             "findings": [f"Could not retrieve live data: {str(e)}"],
             "demo": True
         }
+
+
+def run_odata_check(host, user, password):
+    """Live check via OData when pyrfc not available"""
+    findings = []
+    status = "PASS"
+    score = 100
+
+    data = get_odata_open_items(host, user, password)
+
+    # ST22 Dumps
+    dumps = data["dumps_24hr"]
+    if dumps > 5:
+        findings.append([
+            f"❌ {dumps} ABAP dumps in last 24hrs — Critical!",
+            "Run ST22 → analyse dump details → fix root cause"
+        ])
+        status = "CRITICAL"
+        score -= 30
+    elif dumps > 0:
+        findings.append([
+            f"⚠️ {dumps} ABAP dumps in last 24hrs",
+            "Run ST22 → review dump details → monitor"
+        ])
+        if status != "CRITICAL":
+            status = "WARNING"
+        score -= 15
+        # Show dump details
+        for d in data["dump_details"]:
+            findings.append([
+                f"  Dump: {d['error']} in {d['program']} on {d['date']}",
+                ""
+            ])
+    else:
+        findings.append(["No ABAP dumps in last 24hrs ✅", ""])
+
+    # Open updates
+    if data["open_updates"] > 0:
+        findings.append([
+            f"⚠️ {data['open_updates']} open update requests",
+            "Run SM13 → reprocess or delete open updates"
+        ])
+        if status != "CRITICAL":
+            status = "WARNING"
+        score -= 20
+    else:
+        findings.append(["No open update requests ✅", ""])
+
+    # Spool
+    if data["spool_count"] > 1000:
+        findings.append([
+            f"⚠️ {data['spool_count']} spool requests — cleanup needed",
+            "Run SPAD → delete obsolete spool requests"
+        ])
+        if status != "CRITICAL":
+            status = "WARNING"
+        score -= 10
+    else:
+        findings.append([
+            f"Spool requests: {data['spool_count']} ✅", ""
+        ])
+
+    # BDC errors
+    if data["bdc_errors"] > 0:
+        findings.append([
+            f"⚠️ {data['bdc_errors']} batch input errors",
+            "Run SM35 → review error sessions"
+        ])
+        if status != "CRITICAL":
+            status = "WARNING"
+        score -= 15
+    else:
+        findings.append(["No batch input errors ✅", ""])
+
+    return {
+        "category": "Open Items",
+        "status": status,
+        "score": max(score, 0),
+        "findings": findings,
+        "demo": False,
+        "source": "OData"
+    }
