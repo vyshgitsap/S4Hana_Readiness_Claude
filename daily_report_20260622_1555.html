@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S/4HANA Daily Health Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; }
+        .header { background: #1a237e; color: white; padding: 30px; text-align: center; }
+        .header h1 { font-size: 28px; margin-bottom: 5px; }
+        .header p { opacity: 0.8; font-size: 14px; }
+        .overall { text-align: center; padding: 30px; }
+        .score-circle {
+            display: inline-block;
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            background: #28a745;
+            color: white;
+            line-height: 120px;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 10px;
+        }
+        .overall-status { font-size: 24px; font-weight: bold; color: #28a745; }
+        .ai-summary {
+            background: #e8f4f8;
+            border-left: 4px solid #1a237e;
+            margin: 20px 40px;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .ai-summary h2 { color: #1a237e; margin-bottom: 10px; }
+        .checks-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px 40px;
+        }
+        .check-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .check-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .check-header h3 { color: #1a237e; font-size: 16px; }
+        .status-badge {
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .findings { list-style: none; padding: 0; }
+        .findings li {
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 S/4HANA Daily Health Report</h1>
+        <p>System: S4H | Client: 100 | Generated: June 22, 2026 03:55 PM</p>
+    </div>
+
+    <div class="overall">
+        <div class="score-circle">100</div>
+        <br>
+        <span class="overall-status">System Status: HEALTHY</span>
+    </div>
+
+    <div class="ai-summary">
+        <h2>🤖 Claude AI Analysis</h2>
+        <p># S/4HANA Daily Health Report – Executive Summary
+
+## Overall Status: ✅ **HEALTHY**
+All system checks passed with perfect scores. The S/4HANA environment is operating normally with no critical issues.
+
+## Key Metrics:
+- **Database**: Stable at 70% memory usage; 65% disk utilization (both healthy)
+- **Jobs**: All background processes running smoothly; zero failures
+- **Stability**: No application crashes or system locks detected
+- **Data Protection**: Latest backup completed 6 hours ago ✅
+
+## Immediate Actions Required:
+**None** – system requires only routine monitoring today.
+
+## Recommendations:
+- Continue monitoring HANA memory (currently 70%; alert if exceeds 85%)
+- Maintain regular 6-hour backup schedule
+- Standard daily operational support sufficient
+
+## Outlook:
+No concerning patterns detected. System is well-maintained and performing as expected.</p>
+    </div>
+
+    <div class="checks-grid">
+        
+        <div class="check-card">
+            <div class="check-header">
+                <h3>DB Health (DBACOCKPIT)</h3>
+                <span class="status-badge" style="background:#28a745">
+                    PASS — 100/100
+                </span>
+            </div>
+            <ul class="findings"><li>HANA Disk Usage: 65% ✅</li><li>HANA Memory: 180GB / 256GB (70%) ✅</li><li>HANA Services: All active ✅</li><li>Last backup: 6 hours ago ✅</li></ul>
+        </div>
+        <div class="check-card">
+            <div class="check-header">
+                <h3>Background Jobs (SM37)</h3>
+                <span class="status-badge" style="background:#28a745">
+                    PASS — 100/100
+                </span>
+            </div>
+            <ul class="findings"><li>No failed jobs ✅</li><li>No intercepted jobs ✅</li><li>5 jobs currently running</li></ul>
+        </div>
+        <div class="check-card">
+            <div class="check-header">
+                <h3>Lock Entries (SM12)</h3>
+                <span class="status-badge" style="background:#28a745">
+                    PASS — 100/100
+                </span>
+            </div>
+            <ul class="findings"><li>Lock entries: 12 — normal ✅</li><li>No stuck locks detected ✅</li></ul>
+        </div>
+        <div class="check-card">
+            <div class="check-header">
+                <h3>ABAP Dumps (ST22)</h3>
+                <span class="status-badge" style="background:#28a745">
+                    PASS — 100/100
+                </span>
+            </div>
+            <ul class="findings"><li>No ABAP dumps in last 24hrs ✅</li></ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Generated by S/4HANA Daily Monitor | Powered by Claude AI</p>
+        <p>SAP Basis Portfolio Project — Geyasree VyshnavaPushpagari</p>
+    </div>
+</body>
+</html>

@@ -7,4 +7,17 @@ applications:
     command: python app.py
     env:
       ANTHROPIC_API_KEY: your_key_here
-      DEMO_MODE: true
+      DEMO_MODE: "true"
+
+  - name: s4-daily-monitor
+    memory: 256M
+    instances: 1
+    buildpacks:
+      - python_buildpack
+    command: python daily_monitor_app.py
+    env:
+      ANTHROPIC_API_KEY: your_key_here
+      DEMO_MODE: "true"
+      S4H_HOST: PLACEHOLDER
+      S4H_USER: BPINST
+      S4H_PASSWORD: PLACEHOLDER
